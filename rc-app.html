@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dossier RC – Orga Violet</title>
+<style>
+body{
+  margin:0;font-family:'Segoe UI',sans-serif;
+  background:radial-gradient(circle at top,#3a0f6b,#07040f 70%);
+  color:#e6e6e6;padding:30px
+}
+.container{
+  max-width:900px;margin:auto;
+  background:linear-gradient(160deg,#12081f,#1b0f2e);
+  padding:30px;border-radius:18px;
+  box-shadow:0 0 40px rgba(0,0,0,.9)
+}
+h1{text-align:center;color:#b57cff;text-shadow:0 0 12px rgba(181,124,255,.6)}
+label{display:block;margin-top:16px;color:#caa6ff;font-weight:600}
+input,textarea,select{
+  width:100%;margin-top:6px;padding:12px;
+  border-radius:14px;border:1px solid #3d1a63;
+  background:#0d0816;color:#fff
+}
+textarea{min-height:90px}
+.row{display:flex;gap:15px;flex-wrap:wrap}
+.row>div{flex:1;min-width:220px}
+button{
+  margin-top:30px;padding:14px 28px;
+  border:none;border-radius:16px;
+  background:linear-gradient(135deg,#7a3cff,#b57cff);
+  color:#0b0615;font-size:16px;font-weight:600;
+  cursor:pointer;box-shadow:0 0 20px rgba(181,124,255,.6)
+}
+.badge{
+  display:inline-block;margin-bottom:15px;
+  padding:8px 14px;border-radius:14px;
+  border:1px solid #b57cff;color:#b57cff
+}
+.preview{margin-top:8px;max-height:120px;border-radius:12px;border:1px solid #3d1a63}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📄 Dossier de recrutement – Orga Violet</h1>
+
+<label>Numéro de dossier</label>
+<input id="dossierId" placeholder="Ex: 2026-001">
+
+<div class="row">
+  <div><label>Nom / Prénom</label><input id="nom"></div>
+  <div><label>Âge (là-haut)</label><input id="age" type="number"></div>
+</div>
+
+<label>Matricule (0 à 21)</label>
+<select id="matricule"></select>
+
+<label>Carte d'identité (photo)</label>
+<input type="file" accept="image/*" id="ci" />
+<img id="ciPreview" class="preview" />
+
+<label>Photo du visage</label>
+<input type="file" accept="image/*" id="face" />
+<img id="facePreview" class="preview" />
+
+<label>Informations complémentaires</label>
+<textarea id="infos"></textarea>
+
+<h2>Questions RC</h2>
+<label>1. Autres orga</label><textarea id="q1"></textarea>
+<label>2. Motivation</label><textarea id="q2"></textarea>
+<label>3. Armes / véhicules perm</label><textarea id="q3"></textarea>
+<label>4. Animal totem</label><textarea id="q4"></textarea>
+<label>5. 3 qualités / 3 défauts</label><textarea id="q5"></textarea>
+<label>6. Expérience en ville</label><textarea id="q6"></textarea>
+<label>7. Mise en situation</label><textarea id="q7"></textarea>
+
+<button onclick="exportPDF()">📄 Exporter le dossier en PDF</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const dejaPris=[13,10,9,19,5,14];
+const sel=document.getElementById('matricule');
+for(let i=0;i<=21;i++){
+  if(!dejaPris.includes(i)){
+    const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o);
+  }
+}
+
+function preview(input, img){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>img.src=e.target.result;
+  reader.readAsDataURL(file);
+}
+ci.onchange=()=>preview(ci,ciPreview);
+face.onchange=()=>preview(face,facePreview);
+
+function bubble(pdf,x,y,w,h,text){
+  pdf.setFillColor(20,10,40);
+  pdf.roundedRect(x,y,w,h,6,6,'F');
+  pdf.setTextColor(255,255,255);
+  pdf.text(pdf.splitTextToSize(text||'-',w-10),x+5,y+8);
+}
+
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const pdf=new jsPDF();
+
+  // fond
+  pdf.setFillColor(18,8,32);
+  pdf.rect(0,0,210,297,'F');
+
+  pdf.setTextColor(181,124,255);
+  pdf.setFontSize(20);
+  pdf.text('Dossier de recrutement – Orga Violet',105,18,{align:'center'});
+
+  pdf.setFontSize(12);
+  pdf.text('Dossier n° '+(dossierId.value||'-'),105,26,{align:'center'});
+
+  let y=40;
+  bubble(pdf,10,y,120,16,'Nom : '+nom.value+' | Âge : '+age.value+' | Matricule : '+matricule.value);
+  y+=24;
+
+  const qs=[q1,q2,q3,q4,q5,q6,q7];
+  const titles=[
+    'Autres orga','Motivation','Armes / véhicules','Animal totem',
+    'Qualités / défauts','Expérience','Mise en situation'
+  ];
+
+  qs.forEach((q,i)=>{
+    pdf.setTextColor(181,124,255);
+    pdf.text(titles[i],10,y);
+    y+=4;
+    const lines=pdf.splitTextToSize(q.value||'-',120);
+    const h=lines.length*6+6;
+    bubble(pdf,10,y,120,h,q.value);
+    y+=h+8;
+  });
+
+  if(ciPreview.src){ pdf.addImage(ciPreview.src,'JPEG',140,40,55,35); }
+  if(facePreview.src){ pdf.addImage(facePreview.src,'JPEG',140,82,55,35); }
+
+  pdf.save('dossier_RC_'+(dossierId.value||'X')+'.pdf');
+}
+</script>
+</body>
+</html>
